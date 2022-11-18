@@ -22,7 +22,7 @@ subProc1	endp
 subProc2	proc	stdcall	a:dword, b:dword		; 使用stdcall规则
 	mov		eax, a
 	sub		eax, b
-	ret
+	ret		8
 subProc2	endp
 
 main		proc
