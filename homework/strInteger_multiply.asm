@@ -7,26 +7,67 @@ includelib msvcrt.lib
 ; 声明要使用的 printf,scanf,strlen 函数
 	printf		proto	C :dword, :vararg
 	scanf		proto	C :ptr sbyte, :vararg
-
+	strlen		proto	C :dword
 .stack		4096	; 定义栈的大小为4KB
 
 .data
-	szMsg		byte	'请输入两个长正整数，注意不要以0开头', 0ah, 0
+	szMsg		byte	'请输入两个长正整数', 0ah, 0
 	szScanf		byte	'%s',0				; 输出数字格式
 	szPrint		byte	'%s * %s = %s', 0ah, 0
-
-	num1		byte	200 dup(0)		; 两个乘数
-	num2		byte	200 dup(0)
-	num			byte	400 dup(0)		; 存放结果
+	szNumInfo		byte	'num%d : ',0
+	num1		byte	1000 dup(0)		; 两个乘数
+	num2		byte	1000 dup(0)
+	num			byte	2000 dup(0)		; 存放结果
 .code
+	;----------------------------------------
+	; 去除字符整数开头输入的0
+	str_re_head0	proc	C	str_:ptr dword
+			local	len:dword
+			invoke	strlen, str_
+			mov		len, eax
+			xor		esi, esi
+			mov		ebx, str_			; ebx 中存储数组的首地址
+			jmp		CMP1				
+		Cycle1:
+			mov		al, byte ptr[ebx][esi]
+			cmp		al, '0'
+			jnz		OUT1				; 遇到第一个非'0'字符跳出循环
+			inc		esi
+		CMP1:
+			cmp		esi, len
+			jl		Cycle1				; esi < len
+		OUT1:
+			test	esi, esi			; 
+			jz		OUT3				; 若开头没有0，则直接跳过
+			cmp		esi, len			;
+			jz		OUT2				; 若全为0 
+			sub		len, esi			; len -= esi
+			xor		ecx, ecx
+			jmp		CMP2
+		Cycle2:
+			mov		edi, ecx
+			add		edi, esi
+			mov		al, byte ptr[ebx][edi]
+			mov		edi, ecx
+			mov		byte ptr[ebx][edi], al		; num[ecx]=num[ecx+esi];
+			inc		ecx
+		CMP2:
+			cmp		ecx, len
+			jl		Cycle2						; ecx < len
+			mov		edi, ecx
+			mov		byte ptr[ebx][edi], 0		; num[ecx]=0		
+		OUT3:
+			ret
+		OUT2:									; 全为0时，只留一个为0
+			mov		byte ptr[ebx][0], '0'
+			mov		byte ptr[ebx][1], 0
+			ret
+	str_re_head0	endp
 	;----------------------------------------
 	; 字符串反转函数, 利用栈对字符串进行反转
 	str_reverse		proc	C   str_:ptr dword
-		push	ebx
-		push	ecx
-		; 局部变量声明
-		xor		ecx, ecx
-		mov		ebx, str_
+		xor		ecx, ecx	; ecx初始化为0，用以记录字符串的长度
+		mov		ebx, str_	; 字符数组初始地址
 		jmp		T
 	L1:
 		push	eax			; 字符入栈
@@ -35,19 +76,17 @@ includelib msvcrt.lib
 	T:
 		mov		al,byte ptr[ebx]	; 从数组取出一个字符
 		test	al, al
-		jnz		L1
+		jnz		L1					; 若为 0 及遇到空字符，字符串入栈完毕
 
 		test	ecx, ecx	; 先判断字符串是否为空
-		jz		Doop
-		mov		ebx, str_
+		jz		Doop		; 若为空字符串直接返回
+		mov		ebx, str_	; 非空则进行出栈，得到反序的字符串
 	L2:
 		pop		eax			; 从栈中取出一个字符
 		mov		byte ptr[ebx], al
 		inc		ebx			; 更新指针
 		loop	L2
 	Doop:
-		pop		ecx
-		pop		ebx
 		ret 
 	str_reverse		endp
 	;----------------------------------------
@@ -182,20 +221,22 @@ includelib msvcrt.lib
 		invoke	str_reverse, str_num2
 		invoke	str_reverse, str_num
 
-		mov		eax, str_num
 		ret
 	big_data_multiply	endp
 	;----------------------------------------
-	main proc
-		; 打印提示信息
-		invoke	printf, offset szMsg
-		; 输入两个十进制整数
-		invoke	scanf, offset szScanf, offset num1
-		invoke	scanf, offset szScanf, offset num2
-		; 相乘
-		invoke	big_data_multiply,offset num1,offset num2,offset num
-		; 打印结果
-		invoke	printf, offset szPrint, offset num1, offset num2, offset num
-		ret
-	main endp
+	main		proc
+			; 输入两个十进制整数
+			invoke	printf, offset szNumInfo, 1
+			invoke	scanf, offset szScanf, offset num1
+			invoke	printf, offset szNumInfo, 2
+			invoke	scanf, offset szScanf, offset num2
+			; 对两个字符整数进行处理，去除开头的0以及重复的0
+			invoke	str_re_head0, offset num1
+			invoke	str_re_head0, offset num2
+			; 相乘
+			invoke	big_data_multiply,offset num1,offset num2,offset num
+			; 打印结果
+			invoke	printf, offset szPrint, offset num1, offset num2, offset num
+			ret
+	main		endp
 	end main

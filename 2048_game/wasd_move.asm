@@ -23,7 +23,6 @@ testmap		dword	1, 2, 3, 4
 
 out1		byte	'%d,', 0
 nextLine	byte	'%c', 0
-testMsg		byte	"address=%p", 0ah, 0
 szMsgScore_Change	byte	'score = %d,	change = %d', 0ah, 0
 score		dword	0
 
@@ -604,7 +603,7 @@ move		proc
 		ret
 move		endp
 
-showMap	proc	C
+showMap		proc	C
 		local	i, j, len:dword
 		mov		i, 0
 		mov		len, 16
@@ -629,7 +628,7 @@ showMap	proc	C
 		cmp		i,	 edx
 		jl		Cycle1
 		ret
-showMap	endp
+showMap		endp
 
 main		proc
 		local	change :dword
